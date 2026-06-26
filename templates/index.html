@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extrato {{ year }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header>
+  <h1>Extrato {{ year }}</h1>
+  <div class="grand-total">Total: R$ {{ "%.2f"|format(grand_total) }}</div>
+</header>
+
+<nav class="month-tabs">
+  {% for i in range(1, 13) %}
+    <a href="/{{ year }}/{{ i }}" class="tab {% if i == month %}active{% endif %}">
+      {{ months[i-1] }}
+    </a>
+  {% endfor %}
+  <span class="year-nav">
+    <a href="/{{ year - 1 }}/{{ month }}">&laquo; {{ year - 1 }}</a>
+    <a href="/{{ year + 1 }}/{{ month }}">{{ year + 1 }} &raquo;</a>
+  </span>
+</nav>
+
+<div class="layout">
+
+  <!-- LEFT: expense list + entry form -->
+  <div class="left-col">
+
+    <!-- Add form -->
+    <form class="add-form" method="post" action="/expense/add" id="expense-form">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <input type="number" name="day" placeholder="Dia" min="1" max="31" required>
+      <select name="category" id="cat-select" required onchange="updateSubCats(this.value)">
+        <option value="">Categoria</option>
+        {% for s in sections %}
+          <option>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <select name="sub_category" id="subcat-select" required>
+        <option value="">Sub-categoria</option>
+      </select>
+      <input type="number" name="amount" placeholder="R$" step="0.01" required>
+      <input type="text" name="description" placeholder="Descrição">
+      <button class="add-btn">+ Add</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Dia</th>
+          <th>Categoria</th>
+          <th>Sub-categoria</th>
+          <th class="amount">R$</th>
+          <th>Descrição</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in expenses %}
+        <tr>
+          <td>{{ e.day }}</td>
+          <td><span class="section-badge badge-{{ e.category|lower }}">{{ e.category }}</span></td>
+          <td><span class="tag cat-{{ e.sub_category }}">{{ e.sub_category }}</span></td>
+          <td class="amount">{{ "%.2f"|format(e.amount) }}</td>
+          <td>{{ e.description }}</td>
+          <td>
+            <form method="post" action="/expense/delete/{{ e.id }}">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="month" value="{{ month }}">
+              <button class="del-btn">×</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- RIGHT: summary + category manager -->
+  <div class="right-col">
+
+    <!-- Summary -->
+    <div class="panel">
+      <div class="panel-header">Resumo — {{ months[month-1] }}</div>
+      {% for section in sections %}
+        {% if summary.get(section) %}
+        <div class="summary-section">
+          <div class="summary-section-title">
+            <span class="section-badge badge-{{ section|lower }}">{{ section }}</span>
+            <span class="summary-section-total">R$ {{ "%.2f"|format(section_totals.get(section, 0)) }}</span>
+          </div>
+          {% for sub, total in summary[section].items() %}
+          <div class="summary-row">
+            <span class="tag cat-{{ sub }}">{{ sub }}</span>
+            <span class="summary-amount">R$ {{ "%.2f"|format(total) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if not summary %}
+        <div class="summary-empty">Nenhum lançamento neste mês.</div>
+      {% endif %}
+    </div>
+
+    <!-- Category manager -->
+    <div class="panel">
+      <div class="panel-header">Gerenciar sub-categorias</div>
+      {% for section in sections %}
+      <div class="cat-section">
+        <div class="cat-section-label">
+          <span class="section-badge badge-{{ section|lower }}">{{ section }}</span>
+        </div>
+        <div class="cat-list">
+          {% for c in cats_by_section.get(section, []) %}
+          <form method="post" action="/category/delete/{{ c.id }}" style="display:inline">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <button class="cat-tag">{{ c.name }} ×</button>
+          </form>
+          {% endfor %}
+        </div>
+        <form class="cat-form" method="post" action="/category/add">
+          <input type="hidden" name="year" value="{{ year }}">
+          <input type="hidden" name="month" value="{{ month }}">
+          <input type="hidden" name="section" value="{{ section }}">
+          <input type="text" name="name" placeholder="Nova sub-categoria..." required>
+          <button class="cat-btn">+ Add</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<script type="application/json" id="cats-data">{{ cats_json | tojson }}</script>
+<script>
+  const cats = JSON.parse(document.getElementById('cats-data').textContent);
+
+  function updateSubCats(section) {
+    const sel = document.getElementById('subcat-select');
+    sel.innerHTML = '<option value="">Sub-categoria</option>';
+    (cats[section] || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  }
+</script>
+
+</body>
+</html>
