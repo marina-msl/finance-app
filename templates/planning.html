@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planejamento</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+{% set active = 'planning' %}
+{% include '_navbar.html' %}
+
+<!-- Barra de meses planejados -->
+<div class="planned-months-bar">
+  {% for p in projection %}
+  <div class="planned-month-wrap {% if p.m == month and p.y == year %}is-current{% endif %}">
+    <a href="/planning/{{ p.y }}/{{ p.m }}" class="planned-month-card {% if p.m == month and p.y == year %}active{% endif %}">
+      <div class="pm-label">{{ p.month }}/{{ p.y }}</div>
+      <div class="pm-saldo {% if p.saldo >= 0 %}positive{% else %}negative{% endif %}">
+        {% if p.saldo >= 0 %}+{% endif %}R$ {{ "%.0f"|format(p.saldo) }}
+      </div>
+    </a>
+    <form method="post" action="/planning/month/delete/{{ p.id }}" class="pm-delete-form"
+          onsubmit="return confirm('Excluir {{ p.month }}/{{ p.y }} e todos os lançamentos?')">
+      <button class="pm-delete-btn" title="Excluir este mês">×</button>
+    </form>
+  </div>
+  {% endfor %}
+
+  <!-- Adicionar novo mês -->
+  <form method="post" action="/planning/month/add" class="add-month-form">
+    <select name="month" class="add-month-select">
+      {% for i in range(1, 13) %}
+      <option value="{{ i }}">{{ months[i-1] }}</option>
+      {% endfor %}
+    </select>
+    <input type="number" name="year" value="{{ year }}" min="2024" max="2035" class="add-month-year">
+    <button class="add-month-btn" title="Adicionar mês ao planejamento">+ Mês</button>
+  </form>
+</div>
+
+{% if not projection %}
+<!-- Estado vazio: nenhum mês planejado ainda -->
+<div class="planning-empty-state">
+  <p>Nenhum mês planejado ainda.</p>
+  <p>Use o formulário acima para adicionar o primeiro mês.</p>
+</div>
+{% else %}
+
+<div class="layout">
+
+  <!-- COLUNA ESQUERDA: lançamentos do mês atual -->
+  <div class="left-col">
+
+    {% if not current_planned %}
+    <div class="month-not-added">
+      Este mês não está no planejamento.
+      <form method="post" action="/planning/month/add" style="display:inline">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="year" value="{{ year }}">
+        <button class="plan-add-btn entry-btn" style="margin-left:8px">Adicionar</button>
+      </form>
+    </div>
+    {% else %}
+
+    <!-- Formulário de lançamento -->
+    <form class="plan-add-form" method="post" action="/planning/entry/add">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <input type="number" name="day" placeholder="Dia" min="1" max="31" required style="width:60px">
+      <input type="text" name="name" placeholder="Ex: Salário, Psicólogo..." required style="flex:2">
+      <select name="sign" class="sign-select">
+        <option value="+">+ receita</option>
+        <option value="-">− gasto</option>
+      </select>
+      <input type="number" name="amount" placeholder="R$" step="0.01" min="0" required style="width:100px">
+      <label class="fixed-label">
+        <input type="checkbox" name="is_fixed" value="true"> fixo
+      </label>
+      <button class="plan-add-btn entry-btn">+ Add</button>
+    </form>
+
+    <!-- Lista de lançamentos -->
+    {% if entries %}
+    <table class="plan-table">
+      <thead>
+        <tr>
+          <th style="width:40px">Dia</th>
+          <th>Nome</th>
+          <th class="plan-amount" style="width:130px">Valor</th>
+          <th style="width:56px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in entries %}
+
+        <!-- linha de visualização -->
+        <tr id="view-{{ item.id }}">
+          <td style="color:#888;font-size:13px">{{ item.day }}</td>
+          <td class="plan-name">
+            {{ item.name }}
+            {% if item.is_fixed %}<span class="fixed-badge">fixo</span>{% endif %}
+          </td>
+          <td class="plan-amount {% if item.amount >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+            {% if item.amount >= 0 %}+{% endif %}R$ {{ "%.2f"|format(item.amount) }}
+          </td>
+          <td class="plan-action" style="display:flex;gap:4px;align-items:center">
+            <button class="icon-btn" onclick="toggleEdit({{ item.id }})" title="Editar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <form method="post" action="/planning/entry/delete/{{ item.id }}">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="month" value="{{ month }}">
+              <button class="icon-btn icon-btn-danger" title="Excluir">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </button>
+            </form>
+          </td>
+        </tr>
+
+        <!-- linha de edição (oculta por padrão) -->
+        <tr id="edit-{{ item.id }}" style="display:none" class="edit-row">
+          <td colspan="4">
+            <form method="post" action="/planning/entry/edit/{{ item.id }}" class="inline-edit-form">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="month" value="{{ month }}">
+              <input type="number" name="day" value="{{ item.day }}" min="1" max="31" required style="width:55px">
+              <input type="text" name="name" value="{{ item.name }}" required style="flex:2">
+              <select name="sign" class="sign-select">
+                <option value="+" {% if item.amount >= 0 %}selected{% endif %}>+ receita</option>
+                <option value="-" {% if item.amount < 0 %}selected{% endif %}>− gasto</option>
+              </select>
+              <input type="number" name="amount" value="{{ (item.amount)|abs|round(2) }}"
+                     step="0.01" min="0" required style="width:100px">
+              <button class="plan-add-btn entry-btn" type="submit">Salvar</button>
+              <button class="plan-add-btn cancel-btn" type="button" onclick="toggleEdit({{ item.id }})">Cancelar</button>
+            </form>
+          </td>
+        </tr>
+
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="plan-total-row">
+          <td colspan="2">Total do mês</td>
+          <td class="plan-amount {% if saldo_mes >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+            {% if saldo_mes >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_mes) }}
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <script>
+      function toggleEdit(id) {
+        const view = document.getElementById('view-' + id);
+        const edit = document.getElementById('edit-' + id);
+        const isEditing = edit.style.display !== 'none';
+        view.style.display = isEditing ? '' : 'none';
+        edit.style.display = isEditing ? 'none' : '';
+      }
+    </script>
+    {% else %}
+    <p class="plan-empty" style="margin-top:20px">Nenhum lançamento em {{ months[month-1] }}. Adicione acima.</p>
+    {% endif %}
+
+    {% endif %}
+  </div>
+
+  <!-- COLUNA DIREITA -->
+  <div class="right-col">
+
+    <div class="balance-banner {% if saldo_acumulado >= 0 %}balance-pos{% else %}balance-neg{% endif %}">
+      <div class="balance-label">Saldo acumulado em {{ months[month-1] }}</div>
+      <div class="balance-value">
+        {% if saldo_acumulado >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_acumulado) }}
+      </div>
+      <div class="balance-detail">
+        Anterior R$ {{ "%.2f"|format(saldo_anterior) }}
+        &nbsp;+&nbsp; este mês
+        {% if saldo_mes >= 0 %}+{% endif %}{{ "%.2f"|format(saldo_mes) }}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Resumo — {{ months[month-1] }} {{ year }}</div>
+      <div class="summary-row">
+        <span>Receitas</span>
+        <span class="income-amount">+ R$ {{ "%.2f"|format(total_in) }}</span>
+      </div>
+      <div class="summary-row">
+        <span>Gastos</span>
+        <span class="expense-amount">R$ {{ "%.2f"|format(total_out) }}</span>
+      </div>
+      <div class="summary-row summary-divider">
+        <span><strong>Saldo do mês</strong></span>
+        <span class="{% if saldo_mes >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+          <strong>{% if saldo_mes >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_mes) }}</strong>
+        </span>
+      </div>
+      <div class="summary-row" style="margin-top:6px">
+        <span>Saldo anterior</span>
+        <span>R$ {{ "%.2f"|format(saldo_anterior) }}</span>
+      </div>
+      <div class="summary-row">
+        <span><strong>Saldo acumulado</strong></span>
+        <span class="{% if saldo_acumulado >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+          <strong>{% if saldo_acumulado >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_acumulado) }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Saldo inicial</div>
+      <p style="font-size:12px;color:#666;margin-bottom:8px">
+        Quanto você tem disponível agora? Ponto de partida do cálculo acumulado.
+      </p>
+      <form method="post" action="/planning/config" style="display:flex;gap:8px;align-items:center">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="number" name="starting_balance" value="{{ config.starting_balance }}"
+               step="0.01" style="flex:1;padding:5px;border:1px solid #ccc;border-radius:4px">
+        <button class="plan-add-btn entry-btn">Salvar</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+
+</body>
+</html>

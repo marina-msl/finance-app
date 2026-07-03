@@ -7,23 +7,66 @@ body {
   color: #222;
 }
 
-header {
+/* Top navigation bar */
+.topnav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: #1a73e8;
+  gap: 0;
+  padding: 0 20px;
+  background: #1a1a2e;
   color: white;
+  min-height: 48px;
 }
 
-header h1 { font-size: 16px; font-weight: 600; }
-
-.grand-total {
+.topnav-brand {
   font-size: 15px;
-  font-weight: bold;
-  background: rgba(255,255,255,0.2);
-  padding: 4px 12px;
-  border-radius: 4px;
+  font-weight: 700;
+  color: white;
+  margin-right: 28px;
+  white-space: nowrap;
+}
+
+.topnav-links {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 48px;
+}
+
+.topnav-link {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.topnav-link:hover { color: #fff; background: rgba(255,255,255,0.07); }
+
+.topnav-active {
+  color: #fff !important;
+  border-bottom-color: #4fc3f7;
+}
+
+.topnav-soon {
+  color: rgba(255,255,255,0.35) !important;
+  cursor: default;
+  font-size: 12px;
+}
+.topnav-soon:hover { background: none !important; }
+
+.month-total {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a73e8;
+  padding: 0 8px;
+  white-space: nowrap;
 }
 
 /* Month tabs */
@@ -327,3 +370,224 @@ th.amount { text-align: left; }
   white-space: nowrap;
 }
 .cat-btn:hover { background: #e8f0fe; }
+
+.analyze-btn {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  float: right;
+}
+.analyze-btn:hover { background: #1558b0; }
+.analyze-btn:disabled { background: #aaa; cursor: default; }
+
+.analysis-status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
+  min-height: 18px;
+  font-style: italic;
+}
+
+.analysis-result {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 13px;
+  color: #333;
+}
+
+/* ── Planning page ────────────────────────────────────────────────────────── */
+
+/* Barra de meses planejados */
+.planned-months-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  overflow-x: auto;
+}
+
+.planned-month-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow .15s;
+}
+.planned-month-wrap:hover { box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+.planned-month-wrap.is-current { border-color: #1a73e8; }
+
+.planned-month-card {
+  text-decoration: none;
+  background: #f8f9fa;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 80px;
+}
+.planned-month-wrap.is-current .planned-month-card { background: #e8f0fe; }
+
+.pm-label { font-size: 11px; color: #666; margin-bottom: 3px; }
+.pm-saldo { font-size: 13px; font-weight: 700; }
+.pm-saldo.positive { color: #1e7e34; }
+.pm-saldo.negative { color: #c0392b; }
+
+.pm-delete-form { display: flex; }
+.pm-delete-btn {
+  background: none;
+  border: none;
+  border-left: 1px solid #e0e0e0;
+  color: #bbb;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.pm-delete-btn:hover { background: #fff0f0; color: #e74c3c; }
+
+/* Formulário de adicionar mês */
+.add-month-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.add-month-select {
+  padding: 5px 6px; border: 1px dashed #bbb; border-radius: 4px;
+  font-size: 12px; background: #fafafa; color: #555;
+}
+.add-month-year {
+  width: 68px; padding: 5px 6px; border: 1px dashed #bbb; border-radius: 4px;
+  font-size: 12px; background: #fafafa; color: #555;
+}
+.add-month-btn {
+  background: none; border: 1px dashed #1a73e8; color: #1a73e8;
+  border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px;
+  white-space: nowrap;
+}
+.add-month-btn:hover { background: #e8f0fe; }
+
+.planning-empty-state {
+  text-align: center; color: #888; padding: 60px 20px; font-size: 14px; line-height: 2;
+}
+
+.month-not-added {
+  background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px;
+  padding: 12px 16px; font-size: 13px; color: #795548; margin-bottom: 16px;
+}
+
+.balance-banner {
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  color: #fff;
+}
+.balance-pos { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+.balance-neg { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+.balance-label { font-size: 11px; opacity: .85; margin-bottom: 4px; }
+.balance-value { font-size: 26px; font-weight: 700; }
+.balance-detail { font-size: 11px; opacity: .8; margin-top: 4px; }
+
+.plan-section { margin-bottom: 20px; }
+.plan-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 10px;
+}
+.income-header  { border-color: #27ae60; color: #1e7e34; }
+.expense-header { border-color: #e74c3c; color: #c0392b; }
+.plan-total { font-size: 14px; font-weight: 700; }
+
+.plan-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.plan-add-form input[type="text"]   { flex: 2; min-width: 140px; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+.plan-add-form input[type="number"] { flex: 1; min-width: 80px;  padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+.fixed-label { font-size: 11px; color: #555; display: flex; align-items: center; gap: 4px; }
+
+.plan-add-btn {
+  border: none; border-radius: 4px; padding: 6px 12px;
+  cursor: pointer; font-size: 12px; color: #fff; white-space: nowrap;
+}
+.income-btn  { background: #27ae60; }
+.income-btn:hover  { background: #1e7e34; }
+.expense-btn { background: #e74c3c; }
+.expense-btn:hover { background: #c0392b; }
+.entry-btn   { background: #1a73e8; }
+.entry-btn:hover   { background: #1558b0; }
+.cancel-btn  { background: #888; }
+.cancel-btn:hover  { background: #666; }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 7px;
+  cursor: pointer; color: #888;
+  transition: border-color .15s, color .15s, background .15s;
+  padding: 0;
+}
+.icon-btn:hover { background: #f5f5f5; border-color: #bbb; color: #444; }
+.icon-btn-danger:hover { background: #fff0f0; border-color: #f5c6c6; color: #e74c3c; }
+
+.edit-row td { background: #f0f4ff; padding: 6px 6px !important; }
+
+.inline-edit-form {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+}
+.inline-edit-form input[type="text"]   { flex: 2; min-width: 120px; padding: 4px 6px; border: 1px solid #90caf9; border-radius: 4px; font-size: 12px; }
+.inline-edit-form input[type="number"] { padding: 4px 6px; border: 1px solid #90caf9; border-radius: 4px; font-size: 12px; }
+
+.sign-select {
+  padding: 5px 6px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 12px; background: #fff; width: 100px;
+}
+
+.plan-table { width: 100%; border-collapse: collapse; }
+.plan-table tr:hover { background: #fafafa; }
+.plan-table td { padding: 5px 6px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+.plan-name    { flex: 1; }
+.plan-amount  { text-align: right; font-weight: 600; white-space: nowrap; }
+.plan-action  { width: 28px; text-align: center; }
+.income-amount  { color: #1e7e34; }
+.expense-amount { color: #c0392b; }
+.fixed-badge {
+  font-size: 10px; background: #fff3cd; color: #856404;
+  border-radius: 3px; padding: 1px 5px; margin-left: 5px;
+}
+.plan-empty { font-size: 12px; color: #aaa; padding: 8px 0; }
+
+.plan-total-row td {
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border-top: 2px solid #ddd;
+  background: #f8f9fa;
+}
+.plan-table th {
+  text-align: left;
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-bottom: 1px solid #ddd;
+  text-transform: uppercase;
+}
+.plan-table th.plan-amount { text-align: right; }
+
+.summary-divider { border-top: 1px solid #eee; margin-top: 6px; padding-top: 8px; }
+.summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
