@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 finance.db
 seed_*.py
+.env
