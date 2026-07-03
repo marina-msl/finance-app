@@ -8,10 +8,8 @@
 </head>
 <body>
 
-<header>
-  <h1>Extrato {{ year }}</h1>
-  <div class="grand-total">Total: R$ {{ "%.2f"|format(grand_total) }}</div>
-</header>
+{% set active = 'extrato' %}
+{% include '_navbar.html' %}
 
 <nav class="month-tabs">
   {% for i in range(1, 13) %}
@@ -23,6 +21,7 @@
     <a href="/{{ year - 1 }}/{{ month }}">&laquo; {{ year - 1 }}</a>
     <a href="/{{ year + 1 }}/{{ month }}">{{ year + 1 }} &raquo;</a>
   </span>
+  <span class="month-total">Total: R$ {{ "%.2f"|format(grand_total) }}</span>
 </nav>
 
 <div class="layout">
@@ -108,6 +107,16 @@
       {% endif %}
     </div>
 
+    <!-- AI Analysis -->
+    <div class="panel" id="analysis-panel">
+      <div class="panel-header">
+        Análise IA — {{ months[month-1] }}
+        <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis({{ year }}, {{ month }})">🔍 Analisar</button>
+      </div>
+      <div id="analysis-status" class="analysis-status"></div>
+      <div id="analysis-result" class="analysis-result"></div>
+    </div>
+
     <!-- Category manager -->
     <div class="panel">
       <div class="panel-header">Gerenciar sub-categorias</div>
@@ -142,6 +151,53 @@
 <script type="application/json" id="cats-data">{{ cats_json | tojson }}</script>
 <script>
   const cats = JSON.parse(document.getElementById('cats-data').textContent);
+
+  async function runAnalysis(year, month) {
+    const btn      = document.getElementById('analyze-btn');
+    const statusEl = document.getElementById('analysis-status');
+    const resultEl = document.getElementById('analysis-result');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Analisando...';
+    statusEl.textContent = '';
+    resultEl.textContent = '';
+
+    try {
+      const resp = await fetch(`/analyze/${year}/${month}`, { method: 'POST' });
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // guarda linha incompleta
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const { type, content } = JSON.parse(line.slice(6));
+
+          if (type === 'status') {
+            statusEl.textContent = content;
+          } else if (type === 'chunk') {
+            resultEl.textContent += content;
+          } else if (type === 'error') {
+            resultEl.textContent = '❌ ' + content;
+          } else if (type === 'done') {
+            statusEl.textContent = '✅ Análise concluída';
+          }
+        }
+      }
+    } catch (e) {
+      resultEl.textContent = '❌ Erro ao conectar.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 Analisar';
+    }
+  }
 
   function updateSubCats(section) {
     const sel = document.getElementById('subcat-select');
