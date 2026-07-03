@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Boolean, UniqueConstraint
 from database import Base
 
 
@@ -57,3 +57,34 @@ class AccommodationExpense(Base):
     amount = Column(Float, nullable=False)
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
+
+
+class PlannedEntry(Base):
+    __tablename__ = "planned_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    day = Column(Integer, nullable=False)
+    name = Column(String, nullable=False)
+    # positivo = receita, negativo = gasto
+    amount = Column(Float, nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    is_fixed = Column(Boolean, default=False)
+
+
+class PlannedMonth(Base):
+    __tablename__ = "planned_months"
+    __table_args__ = (UniqueConstraint("month", "year"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+
+
+class PlanningConfig(Base):
+    __tablename__ = "planning_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    starting_balance = Column(Float, default=0.0)   # saldo inicial do primeiro mês planejado
+    starting_month = Column(Integer, nullable=False)
+    starting_year = Column(Integer, nullable=False)
