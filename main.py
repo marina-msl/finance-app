@@ -117,6 +117,26 @@ def add_expense(
     return RedirectResponse(f"/{year}/{month}", status_code=303)
 
 
+@app.post("/expense/edit/{entry_id}")
+def edit_expense(
+    entry_id: int,
+    year: int = Form(...), month: int = Form(...),
+    day: int = Form(...), amount: float = Form(...),
+    category: str = Form(...), sub_category: str = Form(...),
+    description: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    entry = db.query(models.Expense).filter_by(id=entry_id).first()
+    if entry:
+        entry.day = day
+        entry.amount = amount
+        entry.category = category
+        entry.sub_category = sub_category
+        entry.description = description
+        db.commit()
+    return RedirectResponse(f"/{year}/{month}", status_code=303)
+
+
 @app.post("/expense/delete/{entry_id}")
 def delete_expense(entry_id: int, year: int = Form(...), month: int = Form(...), db: Session = Depends(get_db)):
     db.query(models.Expense).filter_by(id=entry_id).delete()
@@ -266,6 +286,36 @@ def add_planned_month(
     exists = db.query(models.PlannedMonth).filter_by(month=month, year=year).first()
     if not exists:
         db.add(models.PlannedMonth(month=month, year=year))
+
+        # Busca o mês planejado imediatamente anterior a este
+        from sqlalchemy import or_, and_
+        prev = (
+            db.query(models.PlannedMonth)
+            .filter(
+                or_(
+                    models.PlannedMonth.year < year,
+                    and_(models.PlannedMonth.year == year, models.PlannedMonth.month < month),
+                )
+            )
+            .order_by(models.PlannedMonth.year.desc(), models.PlannedMonth.month.desc())
+            .first()
+        )
+
+        if prev:
+            # Copia todos os lançamentos fixos do mês anterior para o novo mês
+            fixed = db.query(models.PlannedEntry).filter_by(
+                month=prev.month, year=prev.year, is_fixed=True
+            ).all()
+            for fe in fixed:
+                already = db.query(models.PlannedEntry).filter_by(
+                    name=fe.name, day=fe.day, month=month, year=year
+                ).first()
+                if not already:
+                    db.add(models.PlannedEntry(
+                        day=fe.day, name=fe.name, amount=fe.amount,
+                        month=month, year=year, is_fixed=True,
+                    ))
+
         db.commit()
     return RedirectResponse(f"/planning/{year}/{month}", status_code=303)
 
