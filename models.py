@@ -88,3 +88,15 @@ class PlanningConfig(Base):
     starting_balance = Column(Float, default=0.0)   # saldo inicial do primeiro mês planejado
     starting_month = Column(Integer, nullable=False)
     starting_year = Column(Integer, nullable=False)
+
+
+class StudyDay(Base):
+    __tablename__ = "study_days"
+    __table_args__ = (UniqueConstraint("day", "month", "year"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    day = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    studied = Column(Boolean, default=False)
+    description = Column(String, default="")

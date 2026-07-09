@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estudos {{ year }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+{% set active = 'estudos' %}
+{% include '_navbar.html' %}
+
+<nav class="month-tabs">
+  {% for i in range(1, 13) %}
+    <a href="/estudos/{{ year }}/{{ i }}" class="tab {% if i == month %}active{% endif %}">
+      {{ months[i-1] }}
+    </a>
+  {% endfor %}
+  <span class="year-nav">
+    <a href="/estudos/{{ year - 1 }}/{{ month }}">&laquo; {{ year - 1 }}</a>
+    <a href="/estudos/{{ year + 1 }}/{{ month }}">{{ year + 1 }} &raquo;</a>
+  </span>
+</nav>
+
+<div class="study-wrap">
+
+  <div class="study-percent-banner">
+    <div class="study-percent-label">Estudado em {{ months[month-1] }} {{ year }}</div>
+    <div class="study-percent-value">{{ "%.0f"|format(percent) }}%</div>
+    <div class="study-percent-detail">{{ studied_count }} de {{ days_in_month }} dias</div>
+  </div>
+
+  <div class="study-layout">
+
+    <!-- Quadradinho do calendário -->
+    <div class="cal-box">
+      <div class="cal-header">{{ months[month-1]|upper }} <span class="cal-year">{{ year }}</span></div>
+      <div class="cal-grid">
+        {% for w in ["D", "S", "T", "Q", "Q", "S", "S"] %}
+          <div class="cal-weekday">{{ w }}</div>
+        {% endfor %}
+
+        {% for _ in range(leading_blanks) %}
+          <div class="cal-day cal-day-blank"></div>
+        {% endfor %}
+
+        {% for d in days %}
+        <div class="cal-day {% if d.studied %}cal-day-studied{% else %}cal-day-not{% endif %}"
+             data-day="{{ d.day }}" onclick="selectDay({{ d.day }})">
+          {{ d.day }}
+          {% if d.description %}<span class="cal-day-dot"></span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="cal-legend">
+        <span><i class="cal-legend-dot cal-legend-studied"></i> Estudado</span>
+        <span><i class="cal-legend-dot cal-legend-not"></i> Não estudado</span>
+      </div>
+    </div>
+
+    <!-- Painel de edição do dia selecionado -->
+    <div class="cal-edit-panel" id="cal-edit-panel" style="display:none">
+      <div class="cal-edit-title" id="cal-edit-title"></div>
+      <form method="post" action="/estudos/day/save" id="cal-edit-form">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="day" id="cal-edit-day" value="">
+        <label class="study-day-edit-label">
+          <input type="checkbox" name="studied" value="true" id="cal-edit-studied"
+                 onchange="document.getElementById('cal-edit-desc').disabled = !this.checked">
+          Estudei nesse dia
+        </label>
+        <textarea name="description" id="cal-edit-desc" placeholder="O que foi estudado?"></textarea>
+        <div class="study-day-edit-actions">
+          <button class="plan-add-btn entry-btn" type="submit">Salvar</button>
+          <button class="plan-add-btn cancel-btn" type="button" onclick="closeEdit()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script type="application/json" id="study-data">{{ days | tojson }}</script>
+<script>
+  const studyDays = JSON.parse(document.getElementById('study-data').textContent);
+
+  function selectDay(day) {
+    const rec = studyDays.find(d => d.day === day) || { studied: false, description: '' };
+
+    document.querySelectorAll('.cal-day.selected').forEach(el => el.classList.remove('selected'));
+    const cell = document.querySelector(`.cal-day[data-day="${day}"]`);
+    if (cell) cell.classList.add('selected');
+
+    document.getElementById('cal-edit-title').textContent = 'Dia ' + day;
+    document.getElementById('cal-edit-day').value = day;
+    document.getElementById('cal-edit-studied').checked = rec.studied;
+    document.getElementById('cal-edit-desc').value = rec.description;
+    document.getElementById('cal-edit-desc').disabled = !rec.studied;
+    document.getElementById('cal-edit-panel').style.display = 'block';
+  }
+
+  function closeEdit() {
+    document.getElementById('cal-edit-panel').style.display = 'none';
+    document.querySelectorAll('.cal-day.selected').forEach(el => el.classList.remove('selected'));
+  }
+</script>
+
+</body>
+</html>

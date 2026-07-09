@@ -1,3 +1,4 @@
+import calendar
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Form, Request
@@ -5,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import date, datetime
 
 import models
 from database import engine, get_db, Base
@@ -418,3 +419,54 @@ async def analyze_month(year: int, month: int, db: Session = Depends(get_db)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/estudos", response_class=HTMLResponse)
+def estudos_root():
+    now = datetime.now()
+    return RedirectResponse(f"/estudos/{now.year}/{now.month}")
+
+
+@app.get("/estudos/{year}/{month}", response_class=HTMLResponse)
+def estudos_view(year: int, month: int, request: Request, db: Session = Depends(get_db)):
+    days_in_month = calendar.monthrange(year, month)[1]
+    # 0 = domingo ... 6 = sábado, para alinhar a grade com o calendário
+    leading_blanks = (date(year, month, 1).weekday() + 1) % 7
+
+    records = db.query(models.StudyDay).filter_by(year=year, month=month).all()
+    by_day = {r.day: r for r in records}
+
+    days = []
+    for d in range(1, days_in_month + 1):
+        rec = by_day.get(d)
+        days.append({
+            "day": d,
+            "studied": rec.studied if rec else False,
+            "description": rec.description if rec else "",
+        })
+
+    studied_count = sum(1 for d in days if d["studied"])
+    percent = (studied_count / days_in_month * 100) if days_in_month else 0
+
+    return templates.TemplateResponse(request, "estudos.html", {
+        "year": year, "month": month, "months": MONTHS,
+        "days": days, "leading_blanks": leading_blanks,
+        "days_in_month": days_in_month,
+        "studied_count": studied_count, "percent": percent,
+    })
+
+
+@app.post("/estudos/day/save")
+def save_study_day(
+    year: int = Form(...), month: int = Form(...), day: int = Form(...),
+    studied: bool = Form(False), description: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    rec = db.query(models.StudyDay).filter_by(year=year, month=month, day=day).first()
+    if not rec:
+        rec = models.StudyDay(year=year, month=month, day=day)
+        db.add(rec)
+    rec.studied = studied
+    rec.description = description.strip() if studied else ""
+    db.commit()
+    return RedirectResponse(f"/estudos/{year}/{month}", status_code=303)
