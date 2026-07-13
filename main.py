@@ -384,19 +384,22 @@ def delete_planned_entry(item_id: int, year: int = Form(...), month: int = Form(
     return RedirectResponse(f"/planning/{year}/{month}", status_code=303)
 
 
-@app.post("/analyze/{year}/{month}")
-async def analyze_month(year: int, month: int, db: Session = Depends(get_db)):
+def _sse_stream_response(make_generator):
+    """Envolve um generator de eventos (tipo, dado) numa StreamingResponse SSE.
+
+    O generator roda em thread separada porque as chamadas ao OpenAI são
+    síncronas; a fila repassa os eventos para o loop assíncrono do FastAPI.
+    """
     import asyncio
     import queue
     import threading
     import json
     from fastapi.responses import StreamingResponse
-    from analyze import run_analysis_stream
 
     q: queue.Queue = queue.Queue()
 
     def run_in_thread():
-        for event in run_analysis_stream(db, month, year):
+        for event in make_generator():
             q.put(event)
         q.put(None)  # sentinel de fim
 
@@ -419,6 +422,18 @@ async def analyze_month(year: int, month: int, db: Session = Depends(get_db)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/analyze/{year}/{month}")
+async def analyze_month(year: int, month: int, db: Session = Depends(get_db)):
+    from analyze import run_analysis_stream
+    return _sse_stream_response(lambda: run_analysis_stream(db, month, year))
+
+
+@app.post("/estudos/analyze/{year}/{month}")
+async def analyze_study_month(year: int, month: int, db: Session = Depends(get_db)):
+    from analyze import run_study_analysis_stream
+    return _sse_stream_response(lambda: run_study_analysis_stream(db, month, year))
 
 
 @app.get("/estudos", response_class=HTMLResponse)

@@ -79,6 +79,16 @@
       </form>
     </div>
 
+    <!-- Análise IA -->
+    <div class="panel" id="study-analysis-panel" style="width:360px">
+      <div class="panel-header">
+        Análise IA — {{ months[month-1] }}
+        <button class="analyze-btn" id="study-analyze-btn" onclick="runStudyAnalysis({{ year }}, {{ month }})">🔍 Analisar</button>
+      </div>
+      <div id="study-analysis-status" class="analysis-status"></div>
+      <div id="study-analysis-result" class="analysis-result"></div>
+    </div>
+
   </div>
 </div>
 
@@ -104,6 +114,53 @@
   function closeEdit() {
     document.getElementById('cal-edit-panel').style.display = 'none';
     document.querySelectorAll('.cal-day.selected').forEach(el => el.classList.remove('selected'));
+  }
+
+  async function runStudyAnalysis(year, month) {
+    const btn      = document.getElementById('study-analyze-btn');
+    const statusEl = document.getElementById('study-analysis-status');
+    const resultEl = document.getElementById('study-analysis-result');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Analisando...';
+    statusEl.textContent = '';
+    resultEl.textContent = '';
+
+    try {
+      const resp = await fetch(`/estudos/analyze/${year}/${month}`, { method: 'POST' });
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // guarda linha incompleta
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const { type, content } = JSON.parse(line.slice(6));
+
+          if (type === 'status') {
+            statusEl.textContent = content;
+          } else if (type === 'chunk') {
+            resultEl.textContent += content;
+          } else if (type === 'error') {
+            resultEl.textContent = '❌ ' + content;
+          } else if (type === 'done') {
+            statusEl.textContent = '✅ Análise concluída';
+          }
+        }
+      }
+    } catch (e) {
+      resultEl.textContent = '❌ Erro ao conectar.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 Analisar';
+    }
   }
 </script>
 

@@ -1,4 +1,5 @@
 """Agentic workflow com streaming: GPT analisa gastos usando tools e transmite a resposta em tempo real."""
+import calendar
 import json
 import os
 from collections import defaultdict
@@ -164,6 +165,67 @@ def run_analysis_stream(db: Session, month: int, year: int):
     stream = client.chat.completions.create(
         model="gpt-4o-mini",
         max_tokens=1500,
+        messages=messages,
+        stream=True,
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield ("chunk", delta)
+
+    yield ("done", "")
+
+
+def run_study_analysis_stream(db: Session, month: int, year: int):
+    """Mesmo contrato de eventos de run_analysis_stream, mas avalia os estudos do mês."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        yield ("error", "OPENAI_API_KEY não encontrada.")
+        return
+
+    nome_mes = MONTHS_PT[month - 1]
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    records = (
+        db.query(models.StudyDay)
+        .filter_by(year=year, month=month)
+        .order_by(models.StudyDay.day)
+        .all()
+    )
+    studied = [r for r in records if r.studied and r.description]
+
+    if not studied:
+        yield ("error", f"Nenhum dia estudado registrado em {nome_mes} {year} ainda.")
+        return
+
+    percent = round(len(studied) / days_in_month * 100, 1) if days_in_month else 0
+    dias_texto = "\n".join(f"Dia {r.day}: {r.description}" for r in studied)
+
+    client = OpenAI(api_key=api_key)
+
+    yield ("status", f"📚 Analisando estudos de {nome_mes}...")
+
+    messages = [{
+        "role": "user",
+        "content": (
+            f"Aqui está meu registro de estudos de {nome_mes} {year} "
+            f"({len(studied)} de {days_in_month} dias estudados, {percent}%):\n\n"
+            f"{dias_texto}\n\n"
+            "Com base nisso, escreva uma avaliação em português com:\n"
+            "1) Quais temas/assuntos venho estudando (agrupe e identifique os principais)\n"
+            "2) Consistência: dias seguidos, intervalos sem estudar, padrão observado\n"
+            "3) Pontos de atenção (ex: um tema dominando demais, pouca variedade)\n"
+            "4) 2 sugestões práticas para melhorar a rotina de estudo\n"
+            "Seja direto e específico, citando os temas que encontrar no texto."
+        )
+    }]
+
+    yield ("status", "✍️ Redigindo avaliação...")
+
+    stream = client.chat.completions.create(
+        model="gpt-4o-mini",
+        max_tokens=1200,
         messages=messages,
         stream=True,
     )
