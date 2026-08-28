@@ -89,6 +89,7 @@
           <th style="width:40px">Dia</th>
           <th>Nome</th>
           <th class="plan-amount" style="width:130px">Valor</th>
+          <th class="plan-amount" style="width:130px">Saldo</th>
           <th style="width:56px"></th>
         </tr>
       </thead>
@@ -104,6 +105,9 @@
           </td>
           <td class="plan-amount {% if item.amount >= 0 %}income-amount{% else %}expense-amount{% endif %}">
             {% if item.amount >= 0 %}+{% endif %}R$ {{ "%.2f"|format(item.amount) }}
+          </td>
+          <td class="plan-amount {% if item.running_balance >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+            {% if item.running_balance >= 0 %}+{% endif %}R$ {{ "%.2f"|format(item.running_balance) }}
           </td>
           <td class="plan-action" style="display:flex;gap:4px;align-items:center">
             <button class="icon-btn" onclick="toggleEdit({{ item.id }})" title="Editar">
@@ -129,7 +133,7 @@
 
         <!-- linha de edição (oculta por padrão) -->
         <tr id="edit-{{ item.id }}" style="display:none" class="edit-row">
-          <td colspan="4">
+          <td colspan="5">
             <form method="post" action="/planning/entry/edit/{{ item.id }}" class="inline-edit-form">
               <input type="hidden" name="year" value="{{ year }}">
               <input type="hidden" name="month" value="{{ month }}">
@@ -154,6 +158,9 @@
           <td colspan="2">Total do mês</td>
           <td class="plan-amount {% if saldo_mes >= 0 %}income-amount{% else %}expense-amount{% endif %}">
             {% if saldo_mes >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_mes) }}
+          </td>
+          <td class="plan-amount {% if saldo_acumulado >= 0 %}income-amount{% else %}expense-amount{% endif %}">
+            {% if saldo_acumulado >= 0 %}+{% endif %}R$ {{ "%.2f"|format(saldo_acumulado) }}
           </td>
           <td></td>
         </tr>

@@ -4,3 +4,5 @@ __pycache__/
 finance.db
 seed_*.py
 .env
+build/
+dist/

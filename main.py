@@ -1,4 +1,6 @@
 import calendar
+import os
+import sys
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Form, Request
@@ -12,6 +14,27 @@ import models
 from database import engine, get_db, Base
 
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_expense_installment_columns():
+    """Adiciona as colunas de parcelamento em bancos criados antes dessa feature."""
+    with engine.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(expenses)")]
+        if "installment_no" not in cols:
+            conn.exec_driver_sql("ALTER TABLE expenses ADD COLUMN installment_no INTEGER")
+        if "installment_total" not in cols:
+            conn.exec_driver_sql("ALTER TABLE expenses ADD COLUMN installment_total INTEGER")
+        conn.commit()
+
+
+_ensure_expense_installment_columns()
+
+
+def _resource_dir(name: str) -> str:
+    """Pasta de recursos (templates/static): dentro do bundle quando
+    empacotado pelo PyInstaller, ou a raiz do projeto em desenvolvimento."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, name)
 
 MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
           "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
@@ -44,8 +67,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory=_resource_dir("static")), name="static")
+templates = Jinja2Templates(directory=_resource_dir("templates"))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -106,14 +129,31 @@ def add_expense(
     category: str = Form(...),
     sub_category: str = Form(...),
     description: str = Form(""),
+    installments: int = Form(1),
     db: Session = Depends(get_db),
 ):
-    entry = models.Expense(
-        day=day, amount=amount, category=category,
-        sub_category=sub_category, description=description,
-        month=month, year=year,
-    )
-    db.add(entry)
+    installments = max(1, installments)
+
+    if installments == 1:
+        db.add(models.Expense(
+            day=day, amount=amount, category=category,
+            sub_category=sub_category, description=description,
+            month=month, year=year,
+        ))
+    else:
+        # valor total dividido pelas parcelas; a última parcela absorve o
+        # resto do arredondamento para que a soma bata com o valor digitado
+        base_installment = round(amount / installments, 2)
+        for i, (m, y) in enumerate(_month_range(month, year, installments), start=1):
+            entry_amount = base_installment if i < installments else round(amount - base_installment * (installments - 1), 2)
+            days_in_month = calendar.monthrange(y, m)[1]
+            db.add(models.Expense(
+                day=min(day, days_in_month), amount=entry_amount, category=category,
+                sub_category=sub_category, description=description,
+                month=m, year=y,
+                installment_no=i, installment_total=installments,
+            ))
+
     db.commit()
     return RedirectResponse(f"/{year}/{month}", status_code=303)
 
@@ -237,6 +277,12 @@ def planning_view(year: int, month: int, request: Request, db: Session = Depends
 
     saldo_anterior  = _accumulate_balances(db, config, planned_months, month, year)
     saldo_acumulado = saldo_anterior + saldo_mes
+
+    # Saldo corrente: quanto a conta vai estar depois de cada lançamento do mês
+    running = saldo_anterior
+    for e in entries:
+        running += e.amount
+        e.running_balance = running
 
     # Projeção: todos os meses planejados com saldo acumulado
     projection = []

@@ -13,6 +13,8 @@ class Expense(Base):
     description = Column(String, default="")
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
+    installment_no = Column(Integer, nullable=True)     # ex: 3 de 6 parcelas
+    installment_total = Column(Integer, nullable=True)
 
 
 class FoodExpense(Base):

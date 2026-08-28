@@ -45,6 +45,7 @@
       </select>
       <input type="number" name="amount" placeholder="R$" step="0.01" required>
       <input type="text" name="description" placeholder="Descrição">
+      <input type="number" name="installments" placeholder="Parcelas" min="1" value="1" title="Número de parcelas" style="width:70px">
       <button class="add-btn">+ Add</button>
     </form>
 
@@ -68,7 +69,7 @@
           <td><span class="section-badge badge-{{ e.category|lower }}">{{ e.category }}</span></td>
           <td><span class="tag cat-{{ e.sub_category }}">{{ e.sub_category }}</span></td>
           <td class="amount">{{ "%.2f"|format(e.amount) }}</td>
-          <td>{{ e.description }}</td>
+          <td>{{ e.description }}{% if e.installment_total %} <span class="tag installment-tag">{{ e.installment_no }}/{{ e.installment_total }}</span>{% endif %}</td>
           <td style="display:flex;gap:4px;align-items:center">
             <button class="icon-btn" onclick="toggleExpenseEdit({{ e.id }})" title="Editar">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
