@@ -49,10 +49,32 @@
       <button class="add-btn">+ Add</button>
     </form>
 
-    <table>
+    <form class="statement-filters" id="statement-filters" aria-label="Filtrar lançamentos" hidden>
+      <label>Descrição
+        <input type="search" name="description" placeholder="Buscar na descrição">
+      </label>
+      <label>Categoria
+        <select name="category">
+          <option value="">Todas</option>
+        </select>
+      </label>
+      <label>Subcategoria
+        <select name="subcategory">
+          <option value="">Todas</option>
+        </select>
+      </label>
+      <button type="reset">Limpar filtros</button>
+    </form>
+
+    <table id="statement-table">
       <thead>
         <tr>
-          <th>Dia</th>
+          <th scope="col" aria-sort="ascending">
+            <span id="statement-day-label">Dia</span>
+            <button type="button" class="statement-sort" id="statement-sort" hidden>
+              Dia <span aria-hidden="true">↑</span>
+            </button>
+          </th>
           <th>Categoria</th>
           <th>Sub-categoria</th>
           <th class="amount">R$</th>
@@ -64,7 +86,9 @@
         {% for e in expenses %}
 
         <!-- linha de visualização -->
-        <tr id="view-{{ e.id }}">
+        <tr id="view-{{ e.id }}" data-expense-id="{{ e.id }}" data-day="{{ e.day }}"
+            data-category="{{ e.category }}" data-subcategory="{{ e.sub_category }}"
+            data-description="{{ e.description or '' }}">
           <td>{{ e.day }}</td>
           <td><span class="section-badge badge-{{ e.category|lower }}">{{ e.category }}</span></td>
           <td><span class="tag cat-{{ e.sub_category }}">{{ e.sub_category }}</span></td>
@@ -117,6 +141,9 @@
         </tr>
 
         {% endfor %}
+        <tr id="statement-empty" hidden>
+          <td colspan="6" role="status"></td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -192,6 +219,83 @@
 <script type="application/json" id="cats-data">{{ cats_json | tojson }}</script>
 <script>
   const cats = JSON.parse(document.getElementById('cats-data').textContent);
+
+  function setupStatementFilters() {
+    const form = document.getElementById('statement-filters');
+    const { description, category, subcategory } = form.elements;
+    const tableBody = document.getElementById('statement-table').tBodies[0];
+    const sort = document.getElementById('statement-sort');
+    const empty = document.getElementById('statement-empty');
+    const normalize = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR');
+    const rows = Array.from(tableBody.querySelectorAll('[data-expense-id]'), view => ({
+      view,
+      edit: document.getElementById('edit-' + view.dataset.expenseId),
+      day: Number(view.dataset.day),
+      category: view.dataset.category,
+      subcategory: view.dataset.subcategory,
+      description: normalize(view.dataset.description),
+    }));
+    let ascending = true;
+
+    function setOptions(select, values) {
+      const selected = select.value;
+      const names = [...new Set(values)].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      select.replaceChildren(new Option('Todas', ''), ...names.map(name => new Option(name, name)));
+      select.value = names.includes(selected) ? selected : '';
+    }
+
+    function updateSubcategoryOptions() {
+      const available = rows.filter(row => !category.value || row.category === category.value);
+      setOptions(subcategory, available.map(row => row.subcategory));
+    }
+
+    function applyFilters() {
+      const query = normalize(description.value.trim());
+      let matches = 0;
+      for (const row of rows) {
+        const visible = row.description.includes(query)
+          && (!category.value || row.category === category.value)
+          && (!subcategory.value || row.subcategory === subcategory.value);
+        row.view.hidden = row.edit.hidden = !visible;
+        if (visible) matches++;
+      }
+      empty.hidden = matches > 0;
+      empty.cells[0].textContent = rows.length
+        ? 'Nenhum lançamento corresponde aos filtros.'
+        : 'Nenhum lançamento neste mês.';
+    }
+
+    setOptions(category, rows.map(row => row.category));
+    updateSubcategoryOptions();
+    applyFilters();
+    form.addEventListener('submit', event => event.preventDefault());
+    form.addEventListener('input', event => {
+      if (event.target === category) updateSubcategoryOptions();
+      applyFilters();
+    });
+    form.addEventListener('reset', event => {
+      event.preventDefault();
+      description.value = category.value = subcategory.value = '';
+      updateSubcategoryOptions();
+      applyFilters();
+    });
+    sort.addEventListener('click', () => {
+      ascending = !ascending;
+      const ordered = [...rows].sort((a, b) => ascending ? a.day - b.day : b.day - a.day);
+      for (const row of ordered) {
+        tableBody.insertBefore(row.view, empty);
+        tableBody.insertBefore(row.edit, empty);
+      }
+      sort.closest('th').setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+      sort.querySelector('span').textContent = ascending ? '↑' : '↓';
+    });
+
+    form.hidden = false;
+    sort.hidden = false;
+    document.getElementById('statement-day-label').hidden = true;
+  }
+
+  setupStatementFilters();
 
   async function runAnalysis(year, month) {
     const btn      = document.getElementById('analyze-btn');

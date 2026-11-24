@@ -223,6 +223,47 @@ th.amount { text-align: left; }
 .del-btn:hover { color: #c5221f; }
 
 /* Add form */
+.statement-filters:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.statement-filters label {
+  display: grid;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 12px;
+}
+
+.statement-filters input,
+.statement-filters select,
+.statement-filters button {
+  min-height: 32px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  color: inherit;
+}
+
+.statement-filters button,
+.statement-sort {
+  cursor: pointer;
+}
+
+.statement-sort {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+
 .add-form {
   display: flex;
   flex-wrap: wrap;
